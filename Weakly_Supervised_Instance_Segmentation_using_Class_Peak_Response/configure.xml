@@ -1,0 +1,7 @@
+<configure>
+    <preprocess>
+        <img_size>448</img_size>
+        <horizontal_flip>0.5</horizontal_flip>
+        <!--<vertical_flip></vertical_flip>-->
+    </preprocess>
+</configure>
