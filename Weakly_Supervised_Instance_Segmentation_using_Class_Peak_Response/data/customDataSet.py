@@ -3,6 +3,8 @@ import pandas as pd
 from PIL import Image
 from xml.dom import minidom
 from torchvision import transforms
+import numpy as np
+import torch
 
 img_dir = '../../../../../Data/VOCdevkit/VOC2012/JPEGImages/'
 class_label_dir = '../../../../../Data/VOCdevkit/VOC2012/ImageSets/Main/'
@@ -15,7 +17,7 @@ cotegory = ['dog', 'sofa', 'bicycle', 'aeroplane', 'pottedplant', 'car', 'horse'
 
 # mode=['seg_class','seg_obj]
 class VOC(Dataset):
-    def __init__(self, mode='train', train_val_split=0.9, img_transform=None):
+    def __init__(self, mode='train', train_val_split=0.995, img_transform=None, label_transform=None):
         self.mode = mode
         self.data = pd.read_csv('../class_only_data.csv')
         self.test_seg_class_data = pd.read_csv('../class_seg_data.csv')
@@ -24,16 +26,18 @@ class VOC(Dataset):
         self.train_val_split = train_val_split
 
         train_num = int(len(self.data) * self.train_val_split)
-        self.train_data = self.data.loc[self.data.index[:train_num]]
-        self.val_data = self.data.loc[self.data.index[train_num:]]
+        self.train_data = self.data.loc[self.data.index[:train_num]].reset_index()
+        self.val_data = self.data.loc[self.data.index[train_num:]].reset_index()
 
         self.img_transform = img_transform
+        self.label_transform = label_transform
 
     def __getitem__(self, index):
         if self.mode == 'train':
             item = self.train_data.loc[index]
             img_name = item['img_name']
-            class_label = item['img_class']
+            class_label = torch.from_numpy(
+                np.array([int(x) for x in item['img_class'].replace('[', '').replace(']', '').split(',')])).float()
 
             img_path = img_dir + img_name + '.jpg'
             img = Image.open(img_path).convert('RGB')
@@ -45,7 +49,8 @@ class VOC(Dataset):
         elif self.mode == 'val':
             item = self.val_data.loc[index]
             img_name = item['img_name']
-            class_label = item['img_class']
+            class_label = torch.from_numpy(
+                np.array([int(x) for x in item['img_class'].replace('[', '').replace(']', '').split(',')])).float()
 
             img_path = img_dir + img_name + '.jpg'
             img = Image.open(img_path).convert('RGB')
@@ -55,28 +60,54 @@ class VOC(Dataset):
 
             return img, class_label
 
+        elif self.mode == 'ins_seg':
+            item = self.test_seg_obj_data.loc[index]
+            img_name = item['img_name']
+            class_label = torch.from_numpy(
+                np.array([int(x) for x in item['img_class'].replace('[', '').replace(']', '').split(',')])).float()
+
+            img_path = img_dir + img_name + '.jpg'
+            img = Image.open(img_path).convert('RGB')
+
+            if self.img_transform:
+                img = self.img_transform(img)
+
+            return img_name, img, class_label
+
     def __len__(self):
         if self.mode == 'train':
             return len(self.train_data)
         elif self.mode == 'val':
             return len(self.val_data)
+        elif self.mode == 'ins_seg':
+            return len(self.test_seg_obj_data)
 
 
-def image_transform(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]):
+def image_transform(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225], mode='train'):
     configure_doc = minidom.parse('../configure.xml')
     root = configure_doc.documentElement
 
     preprocess = root.getElementsByTagName('preprocess')[0]
     img_size = int(preprocess.getElementsByTagName('img_size')[0].firstChild.data)
     horizontal_flip = float(preprocess.getElementsByTagName('horizontal_flip')[0].firstChild.data)
+    vertical_flip = float(preprocess.getElementsByTagName('vertical_flip')[0].firstChild.data)
 
     t = [
         transforms.Resize((img_size, img_size)) if img_size is not None else None,
         transforms.RandomHorizontalFlip(horizontal_flip) if horizontal_flip is not None else None,
-        #transforms.RandomVerticalFlip(vertical_flip) if vertical_flip is not None else None,
+        transforms.RandomVerticalFlip(vertical_flip) if vertical_flip is not None else None,
         transforms.ToTensor(),
         transforms.Normalize(mean, std)
     ]
+
+    if mode == 'seg':
+        t = [
+            transforms.Resize((img_size, img_size)) if img_size is not None else None,
+            # transforms.RandomHorizontalFlip(horizontal_flip) if horizontal_flip is not None else None,
+            # transforms.RandomVerticalFlip(vertical_flip) if vertical_flip is not None else None,
+            transforms.ToTensor(),
+            transforms.Normalize(mean, std)
+        ]
 
     return transforms.Compose([v for v in t if v is not None])
 
