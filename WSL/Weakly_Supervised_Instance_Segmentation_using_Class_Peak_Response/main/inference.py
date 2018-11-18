@@ -61,11 +61,11 @@ def main():
 
             aggregation, class_response_maps, peak_list, valid_peak_list, peak_response_maps = model.forward(b_x)
 
-            pickle.dump(
-                [b_name[0], torch.squeeze(b_y).cpu().data.numpy(), torch.squeeze(aggregation).cpu().data.numpy(),
-                 torch.squeeze(class_response_maps).cpu().data.numpy(), peak_list.cpu().data.numpy(),
-                 valid_peak_list.cpu().data.numpy(), peak_response_maps.cpu().data.numpy()],
-                open('../Save/data/peak_response_maps/' + b_name[0] + '.pkl', 'wb'))
+            with open('../Save/data/peak_response_maps/results/' + b_name[0] + '.pkl', 'wb') as f:
+                pickle.dump(
+                    [b_name[0], torch.squeeze(b_y).cpu().data.numpy(), torch.squeeze(aggregation).cpu().data.numpy(),
+                     torch.squeeze(class_response_maps).cpu().data.numpy(), peak_list.cpu().data.numpy(),
+                     valid_peak_list.cpu().data.numpy(), peak_response_maps.cpu().data.numpy()], f)
 
     print('peak successfully')
 
