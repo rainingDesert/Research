@@ -55,9 +55,9 @@ class PeakStimulation(Function):
                 stride=1,
                 return_indices=True)
             peak_map = (indices == element_map)
-            np_input_person=padded_maps.cpu().data.numpy()[0,16,:,:]
-            person_indices=indices.cpu().data.numpy()[0,16,:,:]
-            np_peak_map_person=peak_map.cpu().data.numpy()[0,16,:,:]
+            np_input_person = padded_maps.cpu().data.numpy()[0, 16, :, :]
+            person_indices = indices.cpu().data.numpy()[0, 16, :, :]
+            np_peak_map_person = peak_map.cpu().data.numpy()[0, 16, :, :]
 
         # peak filtering
         if peak_filter:
