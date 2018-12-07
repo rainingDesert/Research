@@ -1,3 +1,5 @@
 **/Save
 **/__pycache__
 Youcook
+**/.idea
+**/.pytest_cache
