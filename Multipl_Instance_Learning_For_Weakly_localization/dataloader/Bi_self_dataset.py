@@ -107,9 +107,11 @@ def image_transform(img_size, mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.2
     if mode == 'train':
         horizontal_flip = 0.5
         vertical_flip = 0.5
+        crop_size = 224
 
         t = [
             transforms.Resize((img_size, img_size)),
+            transforms.RandomCrop(crop_size),
             transforms.RandomHorizontalFlip(horizontal_flip),
             transforms.RandomVerticalFlip(vertical_flip),
             transforms.ToTensor(),
@@ -118,7 +120,7 @@ def image_transform(img_size, mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.2
 
     else:
         t = [
-            transforms.Resize((img_size, img_size)),
+            transforms.Resize((224, 224)),
             transforms.ToTensor(),
             transforms.Normalize(mean, std)
         ]

@@ -220,6 +220,9 @@ def get_iou(norm_cam_np, bbox):
     float
         in [0, 1]
     """
+    if bbox.__class__.__name__=='Tensor':
+        bbox=bbox.numpy()
+
     points = np.where(norm_cam_np == 1)
     bbox_points = [points[1].min(), points[0].min(), points[1].max(), points[0].max()]
     bb1 = {'x1': bbox_points[0], 'x2': bbox_points[2], 'y1': bbox_points[1], 'y2': bbox_points[3]}

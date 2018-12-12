@@ -21,7 +21,7 @@ class Bi_vgg(nn.Module):
 
         self.features = pre_trained_vgg.features
         self.cls1 = nn.Sequential(
-            nn.Linear(512 * 8 * 8, 4096, bias=True),
+            nn.Linear(512 * 7 * 7, 4096, bias=True),
             pre_trained_vgg.classifier[1],
         )
 
@@ -84,13 +84,13 @@ class Bi_vgg(nn.Module):
 
     def to_inference(self):
         self.inference = True
-        if self.freeze_vgg == True:
+        if self.freeze_vgg:
             for param in self.features.parameters():
                 param.requires_grad = True
 
     def close_inference(self):
         self.inference = False
-        if self.freeze_vgg == True:
+        if self.freeze_vgg:
             for param in self.features.parameters():
                 param.requires_grad = False
 

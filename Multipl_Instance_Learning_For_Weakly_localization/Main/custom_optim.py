@@ -32,7 +32,7 @@ def get_finetune_optimizer(args, model):
 
 
 def decrease_lr_by_epoch(epoch, model, args, fine_tune=False):
-    cur_lr = args.lr * (0.5 ** (epoch // 20))
+    cur_lr = args.lr * (0.1 ** (epoch // 20))
 
     weight_list = []
     bias_list = []
@@ -54,10 +54,10 @@ def decrease_lr_by_epoch(epoch, model, args, fine_tune=False):
         opt = torch.optim.SGD(model.parameters(), lr=args.lr, momentum=0.9, weight_decay=1.0e-4)
     else:
         opt = torch.optim.SGD([{'params': weight_list, 'lr': cur_lr},
-                               {'params': bias_list, 'lr': cur_lr},
+                               {'params': bias_list, 'lr': cur_lr * 2},
                                {'params': last_weight_list, 'lr': cur_lr * 10},
-                               {'params': last_bias_list, 'lr': cur_lr * 10}], lr=args.lr, momentum=0.9,
-                              weight_decay=5e-4)
+                               {'params': last_bias_list, 'lr': cur_lr * 20}], lr=args.lr, momentum=0.9,
+                              weight_decay=0.0001, nesterov=True)
 
     return opt
 

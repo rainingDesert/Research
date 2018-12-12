@@ -30,7 +30,7 @@ class CUB_Cls(Dataset):
             raw_img = Image.open(self.root_dir + img_path).convert('RGB')
             # plt.imshow(raw_img)
             # plt.show()
-            img = image_transform(img_size=self.img_size, mode='train')(raw_img)
+            img = image_transform(original_img_size=raw_img.size, img_size=self.img_size, mode='train')(raw_img)
 
             return img_name, img, img_label
 
@@ -41,7 +41,7 @@ class CUB_Cls(Dataset):
             img_label = torch.squeeze(torch.from_numpy(np.array(int(str(item['label']).strip())).reshape(-1)))
 
             raw_img = Image.open(self.root_dir + img_path).convert('RGB')
-            img = image_transform(img_size=self.img_size, mode='train')(raw_img)
+            img = image_transform(original_img_size=raw_img.size, img_size=self.img_size, mode='train')(raw_img)
 
             return img_name, img, img_label
 
@@ -52,7 +52,7 @@ class CUB_Cls(Dataset):
             img_label = torch.squeeze(torch.from_numpy(np.array(int(str(item['label']).strip())).reshape(-1)))
 
             raw_img = Image.open(self.root_dir + img_path).convert('RGB')
-            img = image_transform(img_size=self.img_size, mode='test')(raw_img)
+            img = image_transform(original_img_size=raw_img.size, img_size=self.img_size, mode='test')(raw_img)
 
             return img_name, img, img_label
 
@@ -65,22 +65,23 @@ class CUB_Cls(Dataset):
             return len(self.test_data)
 
 
-def image_transform(img_size, mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225], mode='train'):
+def image_transform(original_img_size, img_size, mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225], mode='train'):
     if mode == 'train':
         horizontal_flip = 0.5
         vertical_flip = 0.5
 
         t = [
-            transforms.Resize((img_size, img_size)),
+            transforms.RandomResizedCrop(size=img_size),
             transforms.RandomHorizontalFlip(horizontal_flip),
             transforms.RandomVerticalFlip(vertical_flip),
+            transforms.ColorJitter(saturation=0.4, brightness=0.4, hue=0.05),
             transforms.ToTensor(),
             transforms.Normalize(mean, std)
         ]
 
     else:
         t = [
-            transforms.Resize((img_size, img_size)),
+            transforms.Resize((img_size,img_size)),
             transforms.ToTensor(),
             transforms.Normalize(mean, std)
         ]
