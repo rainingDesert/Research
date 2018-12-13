@@ -22,21 +22,30 @@ class Function_Generator_Dataset(Dataset):
         self.data = []
         for key in self.func_data.keys():
             for i in range(len(self.func_data[key][0])):
-                self.data.append([self.func_data[key][0][i][0], self.func_data[key][1][i][0], key])
+                self.data.append([self.func_data[key][0][i], self.func_data[key][1][i], key])
         self.data = pd.DataFrame(self.data, columns=['x', 'y', 'label']).sample(frac=1)
-        self.train_data = self.data.sample(frac=self.train_data_size)
-        self.test_data = self.data.drop(self.train_data.index)
+        # self.train_data = self.data.sample(frac=self.train_data_size)
+        # self.test_data = self.data.drop(self.train_data.index)
+        #
+        # self.train_data.reset_index(inplace=True, drop=True)
+        # self.test_data.reset_index(inplace=True, drop=True)
 
-        self.train_data.reset_index(inplace=True, drop=True)
-        self.test_data.reset_index(inplace=True, drop=True)
+        only_data = np.array(self.data[['x', 'y']])
+        min_val, max_val = np.min(only_data.reshape(-1)), np.max(only_data.reshape(-1))
+        only_data = (only_data - min_val) / (max_val - min_val)
+        self.data['x']=only_data[:,0]
+        self.data['y']=only_data[:,1]
+
+        self.data.reset_index(drop=True,inplace=True)
+        print()
 
     def __getitem__(self, index):
         if self.mode == 'train':
             random_row = self.train_data.sample(n=1)
             target_class_data = self.train_data[self.train_data['label'] == random_row['label'].values[0]]
 
-            x_df = target_class_data.sample(n=10)
-            y_df = target_class_data.drop(x_df.index).sample(n=10)
+            x_df = target_class_data.sample(n=100)
+            y_df = target_class_data.drop(x_df.index).sample(n=100)
 
             x = np.array(x_df[['x', 'y']])
             y = np.array(y_df[['x', 'y']])
@@ -60,11 +69,10 @@ class Function_Generator_Dataset(Dataset):
 
         return func_data
 
-    def plot_all_points(self, data_path='../Save/all_function_points.png'):
+    def plot_all_points(self, data_path='../Save/123.png'):
         for key in self.func_data.keys():
             color = '#' + "".join(random.sample("0123456789abcdef", 6))
-            plt.scatter(x=self.func_data[key][0], y=self.func_data[key][1], color=color, s=20,
-                        label=key)
+            plt.scatter(x=self.func_data[key][0], y=self.func_data[key][1], color=color, s=20)
 
         plt.legend()
         plt.savefig(data_path)
@@ -124,8 +132,8 @@ def log_function(a=1, b=0, c=0, noise=True, x_range=[0, 500], nums=10):
 
 def gaussian(x_mu=0, x_sigma=2, y_mu=0, y_sigma=5, noise=True, nums=100):
     def gaussian_exc():
-        x = np.expand_dims(np.random.normal(x_mu, x_sigma, nums), 1)
-        y = np.expand_dims(np.random.normal(y_mu, y_sigma, nums), 1)
+        x = np.random.normal(x_mu, x_sigma, nums)
+        y = np.random.normal(y_mu, y_sigma, nums)
 
         return [x, y]
 

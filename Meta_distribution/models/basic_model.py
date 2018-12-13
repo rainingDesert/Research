@@ -1,35 +1,48 @@
 import torch.nn as nn
 import torch
 import numpy as np
-
+import matplotlib.pyplot as plt
 
 class Basic_Model(nn.Module):
-    def __init__(self, input_dims=2, sample_nums=10):
+    def __init__(self, input_dims = 2*10, sample_nums = 100,noise_dim = 2,feat_dim = 2):
         super(Basic_Model, self).__init__()
 
         self.input_dims = input_dims
         self.sample_nums = sample_nums
+        self.noise_dim = noise_dim
+        self.feat_dim = feat_dim
         self.permutation_matrix = self.get_permutation_matrix()
 
         self.mlp_1 = nn.Sequential(
-            nn.Linear(self.input_dims, 16),
+            nn.Linear(self.input_dims, 32),
             nn.ReLU(True),
-            nn.Linear(16, 512),
+            nn.Linear(32, 32),
             nn.ReLU(True)
         )
 
         self.mlp_2 = nn.Sequential(
-            nn.Linear(512, 16),
+            nn.Linear(32+self.noise_dim, 16),
             nn.ReLU(True),
             nn.Linear(16, 2),
             nn.ReLU(True)
         )
 
     def forward(self, x):
-        mlp_1 = self.mlp_1(x)
-        mlp_2 = self.mlp_2(mlp_1)
+        #print(x.size())
+        x = self.mlp_1(x)
+        #print(x.size())
+        noise = torch.rand(x.size(0), self.sample_nums,self.noise_dim).cuda()
+        #print(noise.size())
+        x = x.repeat((1,self.sample_nums,1))
+        #print(x.size())
+        x = torch.cat([x,noise],dim=2)
+        #print(x.size())
 
-        return mlp_2
+
+        x = self.mlp_2(x)
+        #print(x.size())
+
+        return x
 
     def get_permutation_matrix(self):
         def swap_rows(m):
@@ -50,7 +63,7 @@ class Basic_Model(nn.Module):
 
     def cal_distance(self, m1, m2):
         permutated = torch.mm(self.permutation_matrix, m2)
-        matrix1_3d = m1.unsqueeze(0).repeat(self.sample_nums, 1, 1).view(-1, self.input_dims)
+        matrix1_3d = m1.unsqueeze(0).repeat(self.sample_nums, 1, 1).view(-1, self.feat_dim)
         result = torch.sum((matrix1_3d - permutated) ** 2, dim=-1) ** 0.5
 
         result_min, _ = torch.min(result.view(self.sample_nums, self.sample_nums).transpose(1, 0), dim=-1)
@@ -64,3 +77,18 @@ class Basic_Model(nn.Module):
             loss += (sum_1 + sum_2) / (self.sample_nums * 2)
 
         return loss
+
+    def plot_reuslts_points_and_gt(self, logits, b_x, b_y):
+        for batch_idx in range(logits.shape[0]):
+            reshape_bx=b_x[batch_idx].reshape(-1, b_y.shape[-1])
+            plt.scatter(x=reshape_bx[:, 0], y=reshape_bx[:, 1],
+                        color='b', s=20, label='b_x')
+            plt.scatter(x=logits[batch_idx][:, 0], y=logits[batch_idx][:, 1],
+                        color='r', s=20, label='logits')
+            plt.scatter(x=b_y[batch_idx][:, 0], y=b_y[batch_idx][:, 1],
+                        color='g', s=20, label='b_y')
+
+        plt.legend()
+        plt.savefig('../Save/images/result_x_y.png')
+        plt.show()
+        plt.close()
