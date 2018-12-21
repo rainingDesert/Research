@@ -3,8 +3,11 @@ import torch
 import numpy as np
 import matplotlib.pyplot as plt
 
+
+
+
 class Basic_Model(nn.Module):
-    def __init__(self, input_dims = 2*10, sample_nums = 100,noise_dim = 2,feat_dim = 2):
+    def __init__(self, input_dims=2 * 10, sample_nums=100, noise_dim=2, feat_dim=2):
         super(Basic_Model, self).__init__()
 
         self.input_dims = input_dims
@@ -12,35 +15,48 @@ class Basic_Model(nn.Module):
         self.noise_dim = noise_dim
         self.feat_dim = feat_dim
         self.permutation_matrix = self.get_permutation_matrix()
+        self.rnn = nn.LSTM(  # if use nn.RNN(), it hardly learns
+            input_size=2,
+            hidden_size=32,  # rnn hidden unit
+            num_layers=1,  # number of rnn layer
+            batch_first=True,
+            # input & output will have batch size as first dimension. e.g. (batch, time_step, input_size)
+        )
 
         self.mlp_1 = nn.Sequential(
-            nn.Linear(self.input_dims, 32),
-            nn.ReLU(True),
             nn.Linear(32, 32),
-            nn.ReLU(True)
+            nn.Tanh(),
+
+            nn.Linear(32, 4),
+            nn.Tanh(),
+
         )
 
         self.mlp_2 = nn.Sequential(
-            nn.Linear(32+self.noise_dim, 16),
-            nn.ReLU(True),
+            nn.Linear(4 + self.noise_dim, 32),
+            nn.Tanh(),
+            nn.Linear(32, 32),
+            nn.Tanh(),
+            nn.Linear(32, 16),
+            nn.Tanh(),
             nn.Linear(16, 2),
-            nn.ReLU(True)
+            nn.Tanh(),
         )
 
     def forward(self, x):
         #print(x.size())
+        x, _ = self.rnn(x, None)  # None means no initial hidden state
+        x = x[:, -1, :]
+
+
         x = self.mlp_1(x)
-        #print(x.size())
-        noise = torch.rand(x.size(0), self.sample_nums,self.noise_dim).cuda()
-        #print(noise.size())
-        x = x.repeat((1,self.sample_nums,1))
-        #print(x.size())
-        x = torch.cat([x,noise],dim=2)
-        #print(x.size())
+        x = torch.unsqueeze(x,dim=1)
 
+        noise = torch.rand(x.size(0), self.sample_nums, self.noise_dim).cuda()
+        x = x.repeat((1,self.sample_nums, 1))
 
+        x = torch.cat([x, noise], dim=2)
         x = self.mlp_2(x)
-        #print(x.size())
 
         return x
 
@@ -80,15 +96,28 @@ class Basic_Model(nn.Module):
 
     def plot_reuslts_points_and_gt(self, logits, b_x, b_y):
         for batch_idx in range(logits.shape[0]):
-            reshape_bx=b_x[batch_idx].reshape(-1, b_y.shape[-1])
+            reshape_bx = b_x[batch_idx].reshape(-1, b_y.shape[-1])
             plt.scatter(x=reshape_bx[:, 0], y=reshape_bx[:, 1],
                         color='b', s=20, label='b_x')
             plt.scatter(x=logits[batch_idx][:, 0], y=logits[batch_idx][:, 1],
                         color='r', s=20, label='logits')
             plt.scatter(x=b_y[batch_idx][:, 0], y=b_y[batch_idx][:, 1],
                         color='g', s=20, label='b_y')
-
+        plt.ion()
         plt.legend()
         plt.savefig('../Save/images/result_x_y.png')
         plt.show()
         plt.close()
+
+'''
+if __name__ == '__main__':
+    m1 = torch.from_numpy(np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]])).type(torch.cuda.FloatTensor)
+    m2 = torch.from_numpy(np.array([[0, 0, 0], [0, 1, 0], [2, 0, 1]])).type(torch.cuda.FloatTensor)
+
+    model = Basic_Model(sample_nums=3,feat_dim=3)
+    model.cuda()
+
+    loss = model.cal_distance(m1, m2)
+    loss=model.cal_distance(m2, m1)
+    print()
+'''

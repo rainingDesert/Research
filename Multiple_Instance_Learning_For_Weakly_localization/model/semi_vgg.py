@@ -20,18 +20,19 @@ class Semi_VGG(nn.Module):
         self.inference = inference
 
         self.features = pre_trained_vgg.features
-        self.cls = self.classifier(512, 1)
-        self.cls_cam_to_1 = self.classifier(num_classes, 1)
+        self.cls = self.classifier(512, num_classes)
 
-        self.linear_cls = nn.Sequential(
-            nn.Linear(in_features=512 * 7 * 7, out_features=4096, bias=True),
-            nn.ReLU(True),
-            nn.Dropout(0.5),
-            nn.Linear(in_features=4096, out_features=4096, bias=True),
-            nn.ReLU(True),
-            nn.Dropout(0.5),
-            nn.Linear(in_features=4096, out_features=num_classes, bias=True)
-        )
+        # self.linear_cls = nn.Sequential(
+        #     nn.Linear(in_features=512 * 7 * 7, out_features=4096, bias=True),
+        #     nn.ReLU(True),
+        #     nn.Dropout(0.5),
+        #     nn.Linear(in_features=4096, out_features=4096, bias=True),
+        #     nn.ReLU(True),
+        #     nn.Dropout(0.5),
+        #     nn.Linear(in_features=4096, out_features=num_classes, bias=True)
+        # )
+
+        self.cls_to_1 = self.classifier(num_classes, 1)
 
         if freeze_vgg:
             for param in self.features.parameters():
@@ -50,17 +51,48 @@ class Semi_VGG(nn.Module):
 
     # two branch
     def forward(self, x):
+        # if self.inference:
+        #     x.requires_grad_()
+        #     x.retain_grad()
+        #
+        # base = self.features(x)  # （batch,512,7,7)
+        # # class
+        # logits = self.linear_cls(base.view(base.size(0), 512 * 7 * 7))
+        #
+        # # cam
+        # avg_pool = F.avg_pool2d(base, kernel_size=3, stride=1, padding=1)  # （batch,512,7,7)
+        # cam = self.cls(avg_pool)  # （batch,1,7,7)
+        # norm_cam=self.normalize_atten_maps(cam)
+        #
+        # if self.inference:
+        #     if x.grad is not None:
+        #         x.grad.zero_()
+        #
+        #     cam.backward(gradient=cam, retain_graph=True)
+        #     x_grad = torch.abs(x.grad)
+        #
+        #     return logits, cam, x_grad
+        #
+        # return logits, norm_cam
+
+        # --------------------------------#
+
         if self.inference:
             x.requires_grad_()
             x.retain_grad()
 
         base = self.features(x)  # （batch,512,7,7)
-        # class
-        logits = self.linear_cls(base.view(base.size(0), 512 * 7 * 7))
 
         # cam
         avg_pool = F.avg_pool2d(base, kernel_size=3, stride=1, padding=1)  # （batch,512,7,7)
-        cam = self.cls(avg_pool)  # （batch,1,7,7)
+        cam = self.cls(avg_pool)  # （batch,200,7,7)
+
+        one_cam = self.cls_to_1(cam)  # (batch,1,7,7)
+
+        # norm_cam = self.normalize_atten_maps(one_cam)
+
+        # class
+        logits = torch.mean(torch.mean(cam, dim=2), dim=2)  # (1,200)
 
         if self.inference:
             if x.grad is not None:
@@ -71,25 +103,7 @@ class Semi_VGG(nn.Module):
 
             return logits, cam, x_grad
 
-        return logits, cam
-
-    # # one branch
-    # def forward(self, x):
-    #     if self.inference:
-    #         x.requires_grad_()
-    #         x.retain_grad()
-    #
-    #     base = self.features(x)  # （batch,512,8,8)
-    #     avg_pool = F.avg_pool2d(base, kernel_size=3, stride=1, padding=1)  # （batch,512,8,8)
-    #     cam = self.cls(avg_pool)  # （batch,200,8,8)
-    #     logits = torch.mean(torch.mean(cam, dim=2), dim=2)
-    #
-    #     cam_to_1 = self.cls_cam_to_1(cam)
-    #
-    #     if self.inference:
-    #         print()
-    #
-    #     return logits, cam_to_1
+        return logits, one_cam
 
     def cal_element_loss(self, largest_norm_grad, cam):
         upsample_cam = F.upsample(cam, size=(224, 224), mode='bilinear', align_corners=True)
@@ -115,16 +129,24 @@ class Semi_VGG(nn.Module):
 
         return outline
 
-    def freeze_all(self, mode=True):
+    def normalize_atten_maps(self, atten_maps):
+        atten_shape = atten_maps.size()
+
+        # --------------------------
+        batch_mins, _ = torch.min(atten_maps.view(atten_shape[0:-2] + (-1,)), dim=-1, keepdim=True)
+        batch_maxs, _ = torch.max(atten_maps.view(atten_shape[0:-2] + (-1,)), dim=-1, keepdim=True)
+        atten_normed = torch.div(atten_maps.view(atten_shape[0:-2] + (-1,)) - batch_mins,
+                                 batch_maxs - batch_mins)
+        atten_normed = atten_normed.view(atten_shape)
+
+        return atten_normed
+
+    def freeze(self, mode=True):
         if mode:
             for param in self.features.parameters():
                 param.requires_grad = False
-            for param in self.cls.parameters():
-                param.requires_grad = False
         else:
             for param in self.features.parameters():
-                param.requires_grad = True
-            for param in self.cls.parameters():
                 param.requires_grad = True
 
 
@@ -132,6 +154,7 @@ def get_semi_vgg(pretrained=False, trained=False, **kwargs):
     pre_trained_model = models.vgg16(pretrained=pretrained)
 
     model = Semi_VGG(pre_trained_vgg=pre_trained_model, **kwargs)
+    model.cuda()
 
     if trained:
         pre_trained_model = torch.load('../Save/model/semi_model_vgg_back.pt')

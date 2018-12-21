@@ -10,7 +10,7 @@ import os
 
 
 class CUB_Cls(Dataset):
-    def __init__(self, root_dir, train_data, val_data, test_data, img_size=256, mode='train'):
+    def __init__(self, root_dir, train_data, val_data, test_data, img_size=224, mode='train'):
         self.mode = mode
         self.root_dir = root_dir
         self.img_size = img_size
@@ -30,7 +30,7 @@ class CUB_Cls(Dataset):
             raw_img = Image.open(self.root_dir + img_path).convert('RGB')
             # plt.imshow(raw_img)
             # plt.show()
-            img = image_transform(original_img_size=raw_img.size, img_size=self.img_size, mode='train')(raw_img)
+            img = image_transform(img_size=self.img_size, mode='train')(raw_img)
 
             return img_name, img, img_label
 
@@ -41,7 +41,7 @@ class CUB_Cls(Dataset):
             img_label = torch.squeeze(torch.from_numpy(np.array(int(str(item['label']).strip())).reshape(-1)))
 
             raw_img = Image.open(self.root_dir + img_path).convert('RGB')
-            img = image_transform(original_img_size=raw_img.size, img_size=self.img_size, mode='train')(raw_img)
+            img = image_transform(img_size=self.img_size, mode='val')(raw_img)
 
             return img_name, img, img_label
 
@@ -52,7 +52,7 @@ class CUB_Cls(Dataset):
             img_label = torch.squeeze(torch.from_numpy(np.array(int(str(item['label']).strip())).reshape(-1)))
 
             raw_img = Image.open(self.root_dir + img_path).convert('RGB')
-            img = image_transform(original_img_size=raw_img.size, img_size=self.img_size, mode='test')(raw_img)
+            img = image_transform(img_size=self.img_size, mode='test')(raw_img)
 
             return img_name, img, img_label
 
@@ -65,13 +65,15 @@ class CUB_Cls(Dataset):
             return len(self.test_data)
 
 
-def image_transform(original_img_size, img_size, mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225], mode='train'):
+def image_transform(img_size, mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225], mode='train'):
     if mode == 'train':
         horizontal_flip = 0.5
         vertical_flip = 0.5
 
         t = [
             transforms.RandomResizedCrop(size=img_size),
+            # transforms.Resize((256, 256)),
+            # transforms.RandomCrop(img_size),
             transforms.RandomHorizontalFlip(horizontal_flip),
             transforms.RandomVerticalFlip(vertical_flip),
             transforms.ColorJitter(saturation=0.4, brightness=0.4, hue=0.05),
@@ -81,14 +83,9 @@ def image_transform(original_img_size, img_size, mean=[0.485, 0.456, 0.406], std
 
     else:
         t = [
-            transforms.Resize((img_size,img_size)),
+            transforms.Resize((img_size, img_size)),
             transforms.ToTensor(),
             transforms.Normalize(mean, std)
         ]
 
     return transforms.Compose([v for v in t])
-
-
-if __name__ == '__main__':
-    CUB_BI(root_dir='../../../../../Data/CUB2011/CUB_200_2011/', bi_bird_data='../Save/bi_bird_data.csv',
-           bi_nature_data='../Save/bi_nature_data.csv', mode='train')

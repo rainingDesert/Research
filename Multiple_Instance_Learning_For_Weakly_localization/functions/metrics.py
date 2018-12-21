@@ -8,6 +8,7 @@ from PIL import Image
 from PIL import Image, ImageDraw
 from scipy import ndimage
 import ast
+import matplotlib
 
 '''
 单分类问题acc
@@ -134,22 +135,44 @@ def outline_to_large_area(outline):
     return np_outline
 
 
-def plot_raw_cam_bi(raw, draw_raw, cam, norm_cam_np):
-    if raw is not None:
-        plt.imshow(raw)
-        plt.show()
+def plot_raw_cam_bi(raw, draw_raw, cam, norm_cam_np, bs=False, mode='plot'):
+    if mode == 'plot':
+        if raw is not None:
+            plt.imshow(raw)
+            plt.show()
 
-    if draw_raw is not None:
-        plt.imshow(draw_raw)
-        plt.show()
+        if draw_raw is not None:
+            plt.imshow(draw_raw)
+            plt.show()
 
-    if cam is not None:
-        plt.imshow(cam[0].squeeze().cpu().data.numpy(), cmap='hot')
-        plt.show()
+        if cam is not None:
+            plt.imshow(cam[0].squeeze().cpu().data.numpy(), cmap='hot')
+            plt.show()
 
-    if norm_cam_np is not None:
-        plt.imshow(norm_cam_np)
-        plt.show()
+        if norm_cam_np is not None:
+            plt.imshow(norm_cam_np)
+            plt.show()
+
+    else:
+        if raw is not None:
+            plt.imshow(raw)
+            plt.savefig('../Save/images/raw.png')
+
+        if draw_raw is not None:
+            if bs:
+                plt.imshow(draw_raw)
+                plt.savefig('../Save/images/draw_raw_baseline.png')
+            else:
+                plt.imshow(draw_raw)
+                plt.savefig('../Save/images/draw_raw.png')
+
+        if cam is not None:
+            plt.imshow(cam[0].squeeze().cpu().data.numpy() - 0.2, cmap='hot')
+            plt.savefig('../Save/images/cam.png')
+
+        if norm_cam_np is not None:
+            plt.imshow(norm_cam_np)
+            plt.savefig('../Save/images/norm_cam_np.png')
 
 
 def get_raw_imgs(b_name, dataset):
@@ -161,18 +184,33 @@ def get_raw_imgs(b_name, dataset):
     return img_path, raw_img, bbox
 
 
-def cal_iou(norm_cam_np, bbox, raw):
-    bbox = ast.literal_eval(bbox)
+def get_raw_imgnet_imgs(b_name, dataset):
+    img_path = dataset.val_data_csv[dataset.val_data_csv['ImageId'] == b_name[0]]['path'].values[0]
+    raw_img = Image.open(img_path)
+    bbox = dataset.val_data_csv[dataset.val_data_csv['ImageId'] == b_name[0]]['bbox'].values[0]
+
+    return img_path, raw_img, bbox
+
+
+def cal_iou(norm_cam_np, bbox, raw, mode='cub'):
+    if mode == 'imgnet':
+        bbox = [int(x) for x in bbox.split(' ')]
+    else:
+        bbox = ast.literal_eval(bbox)
 
     draw = ImageDraw.Draw(raw)
-    draw.rectangle([bbox[0], bbox[1], bbox[0] + bbox[2], bbox[1] + bbox[3]], outline='green')
+    if mode == 'imgnet':
+        draw.rectangle([bbox[0], bbox[1], bbox[2], bbox[3]], outline='green')
+    else:
+        draw.rectangle([bbox[0], bbox[1], bbox[0] + bbox[2], bbox[1] + bbox[3]], outline='green')
 
-    points = np.where(norm_cam_np == 1)
-    bbox_points = [points[1].min(), points[0].min(), points[1].max(), points[0].max()]
-    draw.rectangle(bbox_points, outline='red')
+    # points = np.where(norm_cam_np == 1)
+    # bbox_points = [points[1].min(), points[0].min(), points[1].max(), points[0].max()]
+    # draw.rectangle(bbox_points, outline='red')
+    #
+    # iou = get_iou(norm_cam_np, bbox)
 
-    iou = get_iou(norm_cam_np, bbox)
-
+    iou = 0
     return raw, iou
 
 
@@ -200,6 +238,26 @@ def get_max_binary_area(norm_cam_np):
         return largest_norm_cam
 
 
+def is_larger(norm_cam_np, bbox):
+    if bbox.__class__.__name__ == 'Tensor':
+        bbox = bbox.numpy()
+
+    if type(bbox) is str:
+        bbox = ast.literal_eval(bbox)
+
+    points = np.where(norm_cam_np == 1)
+    bbox_points = [points[1].min(), points[0].min(), points[1].max(), points[0].max()]
+
+    bb1 = {'x1': bbox_points[0], 'x2': bbox_points[2], 'y1': bbox_points[1], 'y2': bbox_points[3]}
+    bb2 = {'x1': bbox[0], 'x2': bbox[0] + bbox[2], 'y1': bbox[1],
+           'y2': bbox[1] + bbox[3]}
+
+    if bb1['x1'] <= bb2['x1'] and bb1['y1'] <= bb2['y1'] and bb1['x2'] >= bb2['x2'] and bb1['y2'] >= bb2['y2']:
+        return True
+    else:
+        return False
+
+
 def get_iou(norm_cam_np, bbox):
     """
     Calculate the Intersection over Union (IoU) of two bounding boxes.
@@ -220,8 +278,8 @@ def get_iou(norm_cam_np, bbox):
     float
         in [0, 1]
     """
-    if bbox.__class__.__name__=='Tensor':
-        bbox=bbox.numpy()
+    if bbox.__class__.__name__ == 'Tensor':
+        bbox = bbox.numpy()
 
     points = np.where(norm_cam_np == 1)
     bbox_points = [points[1].min(), points[0].min(), points[1].max(), points[0].max()]

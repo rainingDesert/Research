@@ -51,13 +51,13 @@ def decrease_lr_by_epoch(epoch, model, args, fine_tune=False):
                 last_bias_list.append(value)
 
     if not fine_tune:
-        opt = torch.optim.SGD(model.parameters(), lr=args.lr, momentum=0.9, weight_decay=1.0e-4)
+        opt = torch.optim.SGD(model.parameters(), lr=args.lr, momentum=0.9, weight_decay=0.0001)
     else:
-        opt = torch.optim.SGD([{'params': weight_list, 'lr': cur_lr},
-                               {'params': bias_list, 'lr': cur_lr * 2},
-                               {'params': last_weight_list, 'lr': cur_lr * 10},
-                               {'params': last_bias_list, 'lr': cur_lr * 20}], lr=args.lr, momentum=0.9,
-                              weight_decay=0.0001, nesterov=True)
+        opt = torch.optim.SGD([{'params': weight_list, 'lr': cur_lr / 10},
+                               {'params': bias_list, 'lr': cur_lr * 2 / 10},
+                               {'params': last_weight_list, 'lr': cur_lr},
+                               {'params': last_bias_list, 'lr': cur_lr * 2}], lr=cur_lr, momentum=0.9,
+                              weight_decay=0.0001, nesterov=False)
 
     return opt
 

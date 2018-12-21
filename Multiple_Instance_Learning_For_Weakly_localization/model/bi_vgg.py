@@ -73,7 +73,7 @@ class Bi_vgg(nn.Module):
         grad_shape = bi_x_grad.size()
         outline = torch.zeros(grad_shape)
         for batch_idx in range(grad_shape[0]):
-            thd = float(np.percentile(np.sort(bi_x_grad[batch_idx].view(-1).cpu().data.numpy()), 85))
+            thd = float(np.percentile(np.sort(bi_x_grad[batch_idx].view(-1).cpu().data.numpy()), 80))
             batch_outline = torch.zeros(bi_x_grad[batch_idx].size())
             high_pos = torch.gt(bi_x_grad[batch_idx], thd)
             batch_outline[high_pos.data] = 1.0
@@ -99,21 +99,16 @@ def get_bi_vgg(pretrained=False, trained=False, **kwargs):
     pre_trained_model = models.vgg16(pretrained=pretrained)
 
     model = Bi_vgg(pre_trained_vgg=pre_trained_model, **kwargs)
+    model.cuda()
 
     if trained:
-        pre_trained_model = torch.load('../Save/model/bi_cam_background.pt')
-        pre_model_dict = pre_trained_model.state_dict()
-
-        model_dict = model.state_dict()
-        pre_trained_dict = {k: v for k, v in pre_model_dict.items() if k in model_dict}
-        model_dict.update(pre_trained_dict)
-        model.load_state_dict(model_dict)
+        model.load_state_dict(torch.load('../Save/model/bi_model_Bi_vgg.pt'))
 
     return model
 
 
-if __name__ == '__main__':
-    print(get_linear_vgg(pretrained=True))
+# if __name__ == '__main__':
+#     print(get_linear_vgg(pretrained=True))
 
 '''
 VGG(
