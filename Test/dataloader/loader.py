@@ -63,6 +63,10 @@ class Binary_dataset:
     def __len__(self):
         return len(self.cur_data)
 
+'''
+多分类观察验证集中每张图片在所有conv layer后的feature map的变化
+'''
+
 
 def image_transform(img_size, mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225], mode='train'):
     if mode == 'train':
