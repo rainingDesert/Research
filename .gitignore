@@ -4,3 +4,4 @@ Youcook
 **/.idea
 **/.pytest_cache
 **/save
+**/.ipynb_checkpoints
