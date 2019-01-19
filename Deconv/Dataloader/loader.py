@@ -6,6 +6,8 @@ from torchvision import transforms
 class CUB_Loader:
     def __init__(self, args, mode='train'):
         self.data_csv = pd.read_csv(args.csv_path)
+        self.data_csv = self.data_csv[self.data_csv['cls'] == args.cls]
+        self.data_csv.loc[:, 'cls'] = 0
         self.mode = mode
         self.args = args
         self.img_size = args.train_img_size
