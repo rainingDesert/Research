@@ -32,7 +32,7 @@ def parse_args():
     parser.add_argument('--batch_size', type=int, default=16)
     parser.add_argument('--epoch', type=int, default=50)
     parser.add_argument('--data_root_path', type=str, default='/home/kzy/Data/CUB/CUB_200_2011/'),
-    parser.add_argument('--csv_path', type=str, default='../Save/data.csv')
+    parser.add_argument('--csv_path', type=str, default='../Save/data_t.csv')
     parser.add_argument('--check_path', type=str, default='../Save/{}_check.pkl'.format('dilation_vgg'))
     parser.add_argument('--train_img', type=str,
                         default='../Save/imgs/{}_train_process.png'.format('dilation_vgg')),
@@ -41,7 +41,7 @@ def parse_args():
 
     parser.add_argument('--lr', type=float, default=0.001)
     parser.add_argument('--train_img_size', type=int, default=224)
-    parser.add_argument('--class_nums', type=int, default=200)
+    parser.add_argument('--class_nums', type=int, default=2)
     parser.add_argument('--continue_train', type=bool, default=False)
 
     args = parser.parse_args()
@@ -462,4 +462,4 @@ def dilation_vgg():
 
 if __name__ == '__main__':
     args = parse_args()
-    dilation_vgg()
+    base_vgg_cls()
