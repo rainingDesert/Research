@@ -11,6 +11,10 @@ from graph_seg.main import segment
 def cal_acc(logits, labels):
     return torch.mean((torch.argmax(logits, dim=-1) == labels).float()).item()
 
+def save_results(args, result_dict):
+    with open(args.result_path, 'ab') as f:
+        pickle.dump(result_dict, f)
+
 
 def save_check_point(args, check_dict):
     with open(args.check_path, 'wb') as f:
