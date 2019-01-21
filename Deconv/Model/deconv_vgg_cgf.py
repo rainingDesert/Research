@@ -12,29 +12,13 @@ class Deconv_vgg2(nn.Module):
         self.freeze_vgg = freeze_vgg
         self.class_nums = args.class_nums
 
-        self.features = nn.Sequential(*pre_trained_vgg.features[:-7])
-<<<<<<< HEAD
-        self.cls = nn.Sequential(
-            nn.Conv2d(512, self.class_nums, kernel_size=1, padding=0)  # fc8
-        )
-        self.fc = nn.Sequential(
-            nn.Linear(200, 200 * 14 * 14)
-        )
-
-        self.deconv = nn.Sequential(
-            nn.ConvTranspose2d(in_channels=200, out_channels=512, kernel_size=3, stride=2, padding=0),
-            nn.ConvTranspose2d(in_channels=512, out_channels=200, kernel_size=3, stride=2, padding=0)
-        )
-=======
-        self.cls = self.classifier(512, self.class_nums)
->>>>>>> 3e238dfe5310c9a9caa9a9ec4a15b22b8a2a44ab
+        self.features = nn.Sequential(*pre_trained_vgg.features[:10])
+        self.cls = self.classifier(128, self.class_nums)
 
         if self.freeze_vgg:
             for param in self.features.parameters():
                 param.requires_grad = False
 
-<<<<<<< HEAD
-=======
     def classifier(self, in_planes, out_planes):
         return nn.Sequential(
             # nn.Dropout(0.5),
@@ -46,36 +30,21 @@ class Deconv_vgg2(nn.Module):
             nn.Conv2d(1024, out_planes, kernel_size=1, padding=0)  # fc8
         )
 
->>>>>>> 3e238dfe5310c9a9caa9a9ec4a15b22b8a2a44ab
     def forward(self, x):
         if self.inference:
             x.requires_grad_()
             x.retain_grad()
 
         base = self.features(x)
-<<<<<<< HEAD
-        cam = self.cls(base)
-        logits = torch.mean(torch.mean(cam, dim=2), dim=2)
-        fc = self.fc(logits)
-        fc_3d = fc.view(-1, 200, 14, 14)
-
-        deconv_cam = self.deconv(fc_3d)
-        logits2 = torch.mean(torch.mean(deconv_cam, dim=2), dim=2)
-=======
         base = F.avg_pool2d(base, kernel_size=3, stride=1, padding=1)
         cam = self.cls(base)
 
         logits = torch.mean(torch.mean(cam, dim=2), dim=2)
->>>>>>> 3e238dfe5310c9a9caa9a9ec4a15b22b8a2a44ab
 
         if self.inference:
             pass
 
-<<<<<<< HEAD
-        return logits, logits2, cam, deconv_cam
-=======
         return logits, cam
->>>>>>> 3e238dfe5310c9a9caa9a9ec4a15b22b8a2a44ab
 
     def norm_cam_2_binary(self, bi_x_grad):
         thd = float(np.percentile(np.sort(bi_x_grad.view(-1).cpu().data.numpy()), 80))
@@ -86,22 +55,9 @@ class Deconv_vgg2(nn.Module):
         return outline
 
 
-<<<<<<< HEAD
 def get_vgg_deconv_cgf_model(pretrained=True, **kwargs):
     pre_trained_model = models.vgg16(pretrained=pretrained)
-
     model = Deconv_vgg2(pre_trained_vgg=pre_trained_model, **kwargs)
     model.cuda()
 
     return model
-=======
-
-def get_vgg_deconv_cgf_model(pretrained=True, **kwargs):
-    pre_trained_model = models.vgg16(pretrained=pretrained)
-    # print(pre_trained_model)
-    model = Deconv_vgg2(pre_trained_vgg=pre_trained_model, **kwargs)
-    # print(model)
-    # model.cuda()
-
-    return model
->>>>>>> 3e238dfe5310c9a9caa9a9ec4a15b22b8a2a44ab

@@ -33,15 +33,15 @@ import gc
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--batch_size', type=int, default=16)
-    parser.add_argument('--epoch', type=int, default=50)
+    parser.add_argument('--epoch', type=int, default=30)
     parser.add_argument('--data_root_path', type=str, default='/home/kzy/Data/CUB/CUB_200_2011/'),
     parser.add_argument('--csv_path', type=str, default='../Save/data.csv')
-    parser.add_argument('--result_path', type = str, default = '../Save/{}_result.pkl'.format('vgg_b4'))
-    parser.add_argument('--check_path', type=str, default='../Save/{}_check.pkl'.format('vgg_b4'))
+    parser.add_argument('--result_path', type = str, default = '../Save/{}_result.pkl'.format('vgg_b5'))
+    parser.add_argument('--check_path', type=str, default='../Save/{}_check.pkl'.format('vgg_b5'))
     parser.add_argument('--train_img', type=str,
-                        default='../Save/imgs/{}_train_process.png'.format('vgg_b4')),
-    parser.add_argument('--save_model_path', type=str, default='../Save/models/{}_model.pt'.format('vgg_b4')),
-    parser.add_argument('--test_cam_path', type=str, default='../Save/imgs/{}_test_cam.png'.format('vgg_b4')),
+                        default='../Save/imgs/{}_train_process.png'.format('vgg_b5')),
+    parser.add_argument('--save_model_path', type=str, default='../Save/models/{}_model.pt'.format('vgg_b5')),
+    parser.add_argument('--test_cam_path', type=str, default='../Save/imgs/{}_test_cam.png'.format('vgg_b5')),
 
     parser.add_argument('--lr', type=float, default=0.001)
     parser.add_argument('--train_img_size', type=int, default=224)
@@ -50,7 +50,7 @@ def parse_args():
 
     parser.add_argument('--gpu', type = bool, default = True)
     parser.add_argument('--cls', type = int, default = 0)
-    parser.add_argument('--tot_cls', type = int ,default = 1)
+    parser.add_argument('--tot_cls', type = int ,default = 200)
 
     args = parser.parse_args()
     return args
@@ -70,8 +70,8 @@ def base_vgg_cls():
     dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True)
 
     # 加载模型
-    #model = get_base_vgg_model(args=args)
-    model = get_vgg_deconv_cgf_model(args = args) 
+    model = get_base_vgg_model(args=args)
+    #model = get_vgg_deconv_cgf_model(args = args) 
 
     # 加载参数
     loss_func = torch.nn.CrossEntropyLoss()
@@ -113,51 +113,52 @@ def base_vgg_cls():
         train_acc_arr.append(np.mean(np.array(train_result) == np.array(train_label)))
 
         # validation
-        dataset.to_val()
-        val_dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=False)
-        for step, (img_id, img, label, bbox) in enumerate(tqdm(val_dataloader)):
-            if args.gpu:
-                img = img.cuda()
-                label = label.cuda()
+        #dataset.to_val()
+        #val_dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=False)
+        #for step, (img_id, img, label, bbox) in enumerate(tqdm(val_dataloader)):
+        #    if args.gpu:
+        #        img = img.cuda()
+        #        label = label.cuda()
 
-            logits, cam = model.forward(img)
-            val_result.extend(torch.argmax(logits, dim=-1).cpu().data.numpy())
-            val_label.extend(label.cpu().data.numpy())
+        #    logits, cam = model.forward(img)
+        #    val_result.extend(torch.argmax(logits, dim=-1).cpu().data.numpy())
+        #    val_label.extend(label.cpu().data.numpy())
 
-            if step == 0:
-                target_cls = torch.argmax(logits, dim=-1)
+        #    if step == 0:
+        #        target_cls = torch.argmax(logits, dim=-1)
 
-                plot_dict = dict()
-                plot_dict['raw_imgs'] = get_raw_imgs_by_id(args, img_id[:5], dataset)
-                target_cams = []
-                for i in range(5):
-                    raw_img_size = plot_dict['raw_imgs'][i].size
-                    target_cam = cam[i][target_cls[i]].unsqueeze(0).unsqueeze(0).detach().cpu().data
-                    up_target_cam = F.upsample(target_cam, size=(raw_img_size[1], raw_img_size[0]), mode='bilinear',
-                                               align_corners=True)
-                    target_cams.append(up_target_cam.squeeze())
+        #        plot_dict = dict()
+        #        plot_dict['raw_imgs'] = get_raw_imgs_by_id(args, img_id[:5], dataset)
+        #        target_cams = []
+        #        for i in range(5):
+        #            raw_img_size = plot_dict['raw_imgs'][i].size
+        #            target_cam = cam[i][target_cls[i]].unsqueeze(0).unsqueeze(0).detach().cpu().data
+        #            up_target_cam = F.upsample(target_cam, size=(raw_img_size[1], raw_img_size[0]), mode='bilinear',
+        #                                       align_corners=True)
+        #            target_cams.append(up_target_cam.squeeze())
 
-                plot_dict['cams'] = target_cams
-                plot_different_figs(args, plot_dict)
+        #        plot_dict['cams'] = target_cams
+        #        plot_different_figs(args, plot_dict)
 
-        val_acc_arr.append(np.mean(np.array(val_result) == np.array(val_label)))
+        #val_acc_arr.append(np.mean(np.array(val_result) == np.array(val_label)))
 
-        if len(val_acc_arr) == 1 or val_acc_arr[-1] >= val_acc_arr[-2]:
-            torch.save(model.state_dict(), args.save_model_path)
+        #if len(val_acc_arr) == 1 or val_acc_arr[-1] >= val_acc_arr[-2]:
+        #    torch.save(model.state_dict(), args.save_model_path)
 
         # plot
-        plot_train_process(args, [train_acc_arr, val_acc_arr])
+        #plot_train_process(args, [train_acc_arr, val_acc_arr])
 
         # save check point
         epoch += 1
-        save_check_point(args=args, check_dict={
-            'epoch': epoch,
-            'train_acc_arr': train_acc_arr,
-            'val_acc_arr': val_acc_arr
-        })
+        #save_check_point(args=args, check_dict={
+        #    'epoch': epoch,
+        #    'train_acc_arr': train_acc_arr,
+        #    'val_acc_arr': val_acc_arr
+        #})
 
         dataset.to_train()
 
+    torch.save(model.state_dict(), args.save_model_path[:-3] + '_' + str(args.cls) + args.save_model_path[-3:])
     return model, dataset
 
 def base_vgg_bbx(model, dataset):
